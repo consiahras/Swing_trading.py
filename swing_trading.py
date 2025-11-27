@@ -106,13 +106,13 @@ def analyze_stock(ticker, period='6mo'):
     
     # Add Support/Resistance (top 3 levels)
     if len(support_levels) >= 1:
-        top_supports = support_levels.nlargest(3)
+        top_supports = support_levels.nlargest(3) if not support_levels.empty else pd.Series()
         for s in top_supports:
             apds.append(mpf.make_addplot([s]*len(df), color='green', width=2, alpha=0.8, 
                                        linestyle='-', label='Support'))
     
     if len(resistance_levels) >= 1:
-        top_resist = resistance_levels.nsmallest(3)
+        top_resist = resistance_levels.nsmallest(3) if not resistance_levels.empty else pd.Series()
         for r in top_resist:
             apds.append(mpf.make_addplot([r]*len(df), color='red', width=2, alpha=0.8, 
                                        linestyle='-', label='Resistance'))
