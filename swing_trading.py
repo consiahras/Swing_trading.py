@@ -27,7 +27,7 @@ def analyze_stock(ticker, period='6mo'):
     df['%K'] = 100 * (df['Close'] - low_min) / (high_max - low_min)
     df['%D'] = df['%K'].rolling(3).mean()
     
-    # Fibonacci Retracement (recent swing high/low) - FIXED
+    # Fibonacci Retracement (recent swing high/low)
     high_indices = argrelextrema(df['High'].values, np.greater, order=5)[0]
     low_indices = argrelextrema(df['Low'].values, np.less, order=5)[0]
     
@@ -53,7 +53,7 @@ def analyze_stock(ticker, period='6mo'):
         '100%': swing_low
     }
     
-    # Fibonacci Projection (Extension beyond swing high) - FIXED
+    # Fibonacci Projection (Extension beyond swing high)
     try:
         if high_idx > low_idx:
             retrace_low = df['Low'].iloc[low_idx:high_idx+1].min()
@@ -69,12 +69,16 @@ def analyze_stock(ticker, period='6mo'):
         '261.8%': swing_high + 1.618 * proj_range
     }
     
-    # Support/Resistance (Pivot points from local extrema)
+    # Support/Resistance (Pivot points from local extrema) - **COMPLETE FIX**
     support_idx = argrelextrema(df['Low'].values, np.less, order=10)[0]
     resistance_idx = argrelextrema(df['High'].values, np.greater, order=10)[0]
     
-    support_levels = df['Low'].iloc[support_idx] if len(support_idx) > 0 else pd.Series([])
-    resistance_levels = df['High'].iloc[resistance_idx] if len(resistance_idx) > 0 else pd.Series([])
+    support_levels = df['Low'].iloc[support_idx]
+    resistance_levels = df['High'].iloc[resistance_idx]
+    
+    # Convert to numpy arrays to avoid any pandas issues
+    top_supports = support_levels.sort_values(ascending=True).head(3).values if len(support_levels) > 0 else np.array([])
+    top_resist = resistance_levels.sort_values(ascending=False).head(3).values if len(resistance_levels) > 0 else np.array([])
     
     # Trendline (linear regression on recent lows)
     recent_lows = df['Low'].tail(100)
@@ -104,18 +108,14 @@ def analyze_stock(ticker, period='6mo'):
         apds.append(mpf.make_addplot([price]*len(df), color='purple', width=1, 
                                    linestyle='--', alpha=0.7, label=f'Fib {level_name}'))
     
-    # Add Support/Resistance (top 3 levels)
-    if len(support_levels) >= 1:
-        top_supports = support_levels.nlargest(3) if not support_levels.empty else pd.Series()
-        for s in top_supports:
-            apds.append(mpf.make_addplot([s]*len(df), color='green', width=2, alpha=0.8, 
-                                       linestyle='-', label='Support'))
+    # Add Support/Resistance (top 3 levels) - **NOW SAFE**
+    for s in top_supports:
+        apds.append(mpf.make_addplot([s]*len(df), color='green', width=2, alpha=0.8, 
+                                   linestyle='-', label='Support'))
     
-    if len(resistance_levels) >= 1:
-        top_resist = resistance_levels.nsmallest(3) if not resistance_levels.empty else pd.Series()
-        for r in top_resist:
-            apds.append(mpf.make_addplot([r]*len(df), color='red', width=2, alpha=0.8, 
-                                       linestyle='-', label='Resistance'))
+    for r in top_resist:
+        apds.append(mpf.make_addplot([r]*len(df), color='red', width=2, alpha=0.8, 
+                                   linestyle='-', label='Resistance'))
     
     # Add Stochastic subplot (separate panel)
     stoch_df = pd.DataFrame({
@@ -137,11 +137,11 @@ def analyze_stock(ticker, period='6mo'):
              figsize=(16,12), panel_ratios=(3,1))
     
     # Print key levels
-    print(f"\n{ticker} [finance:Albemarle Corporation] Key Levels:")
+    print(f"\n{ticker} Key Levels:")
     print("Fibonacci Retracement:", {k: f"${v:.2f}" for k,v in fib_levels.items()})
     print("Fibonacci Projection:", {k: f"${v:.2f}" for k,v in fib_proj.items()})
-    print("Top Supports:", [f"${float(s):.2f}" for s in top_supports] if 'top_supports' in locals() and len(top_supports)>0 else "N/A")
-    print("Top Resistance:", [f"${float(r):.2f}" for r in top_resist] if 'top_resist' in locals() and len(top_resist)>0 else "N/A")
+    print("Top Supports:", [f"${s:.2f}" for s in top_supports])
+    print("Top Resistance:", [f"${r:.2f}" for r in top_resist])
     print("Trendline Slope:", f"{trend_slope:.4f}" if not np.isnan(trend_slope) else "N/A")
 
 # Usage
